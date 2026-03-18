@@ -1,9 +1,9 @@
 {
-  "name": "eethuis-boles-printer",
-  "version": "1.0.0",
-  "description": "Eethuis Bol'Es Printer Agent - Automatisch bonnetjes printen",
+  "name": "restaurant-printer",
+  "version": "1.0.1",
+  "description": "Restaurant Printer Agent - Automatisch bonnetjes printen",
   "main": "main.js",
-  "author": "Eethuis Bol'Es",
+  "author": "Martis Coding",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -26,8 +26,8 @@
     "png-to-ico": "^3.0.1"
   },
   "build": {
-    "appId": "nl.eethuisboles.printer",
-    "productName": "Eethuis Bol'Es Printer",
+    "appId": "nl.martiscoding.restaurant-printer",
+    "productName": "Restaurant Printer",
     "directories": {
       "output": "dist"
     },
@@ -62,7 +62,7 @@
       "allowToChangeInstallationDirectory": false,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
-      "shortcutName": "Bol'Es Printer"
+      "shortcutName": "Restaurant Printer"
     },
     "publish": [
       {

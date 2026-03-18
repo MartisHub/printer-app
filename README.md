@@ -1,9 +1,9 @@
-# Eethuis Bol'Es Printer App
+# Restaurant Printer App
 
 ## Voor de klant
 
 ### Installatie (eenmalig)
-1. Dubbelklik op `Eethuis Bol'Es Printer Setup.exe`
+1. Dubbelklik op `Restaurant Printer Setup.exe`
 2. App installeert zichzelf en start automatisch
 3. Welkomstscherm verschijnt → plak het **Agent Token** (krijg je van ons)
 4. Klik **Verbinden** → klaar!
@@ -39,7 +39,7 @@ npm run build:mac    # Bouw Mac .dmg installer
 ```
 
 Output in `dist/`:
-- `Eethuis Bol'Es Printer Setup x.x.x.exe` — Installer
+- `Restaurant Printer Setup x.x.x.exe` — Installer
 - `latest.yml` — Update metadata
 
 ### Update uitrollen naar klant
@@ -57,18 +57,18 @@ npm run deploy-update
 De app bij de klant checkt elk uur op updates en installeert automatisch.
 
 ### GitHub setup (eenmalig)
-1. Maak repo: `github.com/eethuis-boles/printer-releases`
+1. Maak repo: `github.com/MartisHub/printer-app`
 2. Maak [Personal Access Token](https://github.com/settings/tokens) → scope: `repo`
 3. Bewaar token veilig
 
 ### Configuratie
 
-Bij eerste start maakt de app `config.json` aan in `%APPDATA%\eethuis-boles-printer\`.
+Bij eerste start maakt de app `config.json` aan in `%APPDATA%\restaurant-printer\`.
 In dev mode: `config.dev.json`.
 
 | Setting             | Beschrijving                    | Default (prod)                     | Default (dev)        |
 |---------------------|---------------------------------|------------------------------------|----------------------|
-| apiBaseUrl          | Server URL                      | https://portaal.eethuisboles.nl    | http://localhost:3001|
+| apiBaseUrl          | Server URL                      | (door klant ingesteld)             | http://localhost:3001|
 | agentToken          | Agent authenticatie token       | (leeg — moet ingevuld)            | dev-test-token       |
 | pollIntervalMs      | Hoe vaak checken voor jobs (ms) | 5000                               | 5000                 |
 | heartbeatIntervalMs | Heartbeat interval (ms)         | 30000                              | 30000                |
@@ -122,5 +122,5 @@ Latere updates? `npm version patch && npm run release` — klant krijgt het vanz
 
 Logs staan in:
 ```
-%APPDATA%\eethuis-boles-printer\agent.log
+%APPDATA%\restaurant-printer\agent.log
 ```

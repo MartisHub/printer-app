@@ -1,6 +1,6 @@
 /**
- * Eethuis Bol'Es Printer App — Main Process
- * ============================================
+ * Restaurant Printer App — Main Process
+ * ========================================
  * Electron main process: tray icon, window, auto-update, agent lifecycle.
  */
 
@@ -97,7 +97,7 @@ function createTray() {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip("Eethuis Bol'Es Printer");
+  tray.setToolTip("Restaurant Printer");
   updateTrayMenu();
 
   tray.on('double-click', () => {
@@ -115,7 +115,7 @@ function updateTrayMenu() {
     : '⚪ Offline';
 
   const menu = Menu.buildFromTemplate([
-    { label: `Bol'Es Printer — ${statusText}`, enabled: false },
+    { label: `Restaurant Printer — ${statusText}`, enabled: false },
     { type: 'separator' },
     { label: 'Openen', click: () => showWindow() },
     { label: 'Test Print', click: () => testPrint() },
@@ -149,7 +149,7 @@ function createWindow() {
     minHeight: 500,
     resizable: true,
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: "Eethuis Bol'Es Printer",
+    title: "Restaurant Printer",
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -444,6 +444,6 @@ app.on('before-quit', () => {
 if (!IS_DEV) {
   app.setLoginItemSettings({
     openAtLogin: true,
-    name: "Eethuis Bol'Es Printer",
+    name: "Restaurant Printer",
   });
 }

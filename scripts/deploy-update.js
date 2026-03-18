@@ -5,7 +5,7 @@
  * The app auto-checks for updates every hour.
  *
  * Prerequisites:
- *   1. Create a GitHub repo: github.com/eethuis-boles/printer-releases
+ *   1. Create a GitHub repo: github.com/MartisHub/printer-app
  *   2. Create a Personal Access Token (classic) with 'repo' scope
  *   3. Set the token: set GH_TOKEN=ghp_xxxx  (or use .env)
  *

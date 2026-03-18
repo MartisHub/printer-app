@@ -1,6 +1,6 @@
 /**
- * Eethuis Bol'Es Print Agent Module
- * ====================================
+ * Restaurant Print Agent Module
+ * ================================
  * Refactored from standalone agent into a class that Electron can import.
  * Handles: polling for jobs, claiming, ESC/POS printing, heartbeat, logging.
  */
@@ -57,7 +57,7 @@ class PrintAgent {
     this.running = true;
     this.startTime = Date.now();
 
-    this.log('INFO', `Eethuis Bol'Es Printer Agent v${AGENT_VERSION} starting...`);
+    this.log('INFO', `Restaurant Printer Agent v${AGENT_VERSION} starting...`);
     this.log('INFO', `Server: ${this.apiBase}`);
     this.log('INFO', `Poll: ${this.pollInterval}ms, Heartbeat: ${this.heartbeatInterval}ms`);
 
@@ -136,7 +136,7 @@ class PrintAgent {
         headers: {
           'Authorization': authHeader,
           'Content-Type': 'application/json',
-          'User-Agent': `BolesPrinterAgent/${AGENT_VERSION}`,
+          'User-Agent': `RestaurantPrinterAgent/${AGENT_VERSION}`,
         },
         timeout: 15000,
       };
@@ -463,7 +463,7 @@ class PrintAgent {
     ticket += CENTER;
     ticket += DOUBLE_SIZE;
     ticket += BOLD_ON;
-    ticket += "EETHUIS BOL'ES" + LF;
+    ticket += order.restaurant_name || 'RESTAURANT' + LF;
     ticket += NORMAL_SIZE;
     ticket += BOLD_OFF;
     ticket += LINE + LF;
@@ -583,7 +583,7 @@ class PrintAgent {
     const lines = [];
     lines.push('');
     lines.push(LINE);
-    lines.push(this._center("EETHUIS BOL'ES", W));
+    lines.push(this._center(orderData.restaurant_name || 'RESTAURANT', W));
     lines.push(DASH);
     lines.push(this._center(`BESTELLING #${orderData.order_number}`, W));
     const date = new Date(orderData.created_at);

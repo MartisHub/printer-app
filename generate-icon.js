@@ -89,7 +89,7 @@ function crc32(buf) {
 function drawPrinterIcon(size) {
   const pixels = new Uint8Array(size * size * 4);
   
-  const orange = [255, 140, 0, 255];   // Bol'Es orange
+  const orange = [255, 140, 0, 255];   // Brand orange
   const dark = [30, 30, 50, 255];      // Dark body
   const white = [255, 255, 255, 255];
   const paper = [240, 240, 235, 255];
