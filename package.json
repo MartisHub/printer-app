@@ -67,8 +67,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "eethuis-boles",
-        "repo": "printer-releases"
+        "owner": "MartisHub",
+        "repo": "printer-app"
       }
     ],
     "files": [
