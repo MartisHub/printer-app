@@ -5,8 +5,8 @@
 
 // ============ ELEMENTS ============
 const $ = (sel) => document.querySelector(sel);
-const statusDot = $('#status-dot');
-const statusText = $('#status-text');
+const welcomeScreen = $('#welcome-screen');
+const mainApp = $('#main-app');
 const printedToday = $('#printed-today');
 const lastPrint = $('#last-print');
 const versionEl = $('#version');
@@ -16,9 +16,26 @@ const updateBanner = $('#update-banner');
 const updateText = $('#update-text');
 const settingsModal = $('#settings-modal');
 
+// Connection elements
+const serverDot = $('#server-dot');
+const serverStatus = $('#server-status');
+const printerDot = $('#printer-dot');
+const printerStatus = $('#printer-status');
+const locationText = $('#location-text');
+const printerCard = $('#printer-card');
+const printerListCompact = $('#printer-list-compact');
+
 // ============ INIT ============
 async function init() {
   const state = await window.api.getState();
+
+  // Show welcome screen if no token
+  if (!state.config.hasToken) {
+    showWelcome();
+    return;
+  }
+
+  showMainApp();
   updateUI(state);
 
   // Load config into settings form
@@ -26,6 +43,21 @@ async function init() {
   $('#input-api-url').value = config.apiBaseUrl || '';
   $('#input-token').placeholder = config.agentToken || 'Plak je agent token hier';
   $('#input-poll').value = config.pollIntervalMs || 5000;
+
+  // Get initial connection info
+  const connInfo = await window.api.getConnectionInfo();
+  if (connInfo) updateConnectionUI(connInfo);
+}
+
+// ============ WELCOME / ONBOARDING ============
+function showWelcome() {
+  welcomeScreen.classList.remove('hidden');
+  mainApp.classList.add('hidden');
+}
+
+function showMainApp() {
+  welcomeScreen.classList.add('hidden');
+  mainApp.classList.remove('hidden');
 }
 
 // ============ UI UPDATE ============
@@ -41,20 +73,11 @@ function updateUI(state) {
     devBadge.classList.add('hidden');
   }
 
-  // Status dot
-  statusDot.className = `status-dot ${state.status}`;
-  const statusLabels = {
-    online: '🟢 Online — Luistert naar bestellingen',
-    offline: '⚪ Offline — Niet verbonden',
-    error: '🔴 Fout — Controleer instellingen',
-  };
-  statusText.textContent = statusLabels[state.status] || 'Onbekend';
-
   // Stats
   printedToday.textContent = state.printedToday || 0;
   if (state.lastPrint) {
     const time = new Date(state.lastPrint.time);
-    lastPrint.textContent = `${state.lastPrint.orderNumber} (${formatTime(time)})`;
+    lastPrint.textContent = `#${state.lastPrint.orderNumber} (${formatTime(time)})`;
   } else {
     lastPrint.textContent = '—';
   }
@@ -68,6 +91,65 @@ function updateUI(state) {
   if (state.updateAvailable) {
     updateBanner.classList.remove('hidden');
     updateText.textContent = `Update v${state.updateAvailable} beschikbaar!`;
+  }
+
+  // Connection info
+  if (state.connectionInfo) {
+    updateConnectionUI(state.connectionInfo);
+  }
+}
+
+// ============ CONNECTION UI ============
+function updateConnectionUI(info) {
+  // Server status
+  serverDot.className = `connection-dot ${info.server}`;
+  const serverLabels = {
+    connected: 'Verbonden',
+    disconnected: 'Niet bereikbaar',
+    checking: 'Controleren...',
+  };
+  serverStatus.textContent = serverLabels[info.server] || info.server;
+  if (info.server === 'disconnected' && info.serverError) {
+    serverStatus.title = info.serverError;
+  }
+
+  // Printer status
+  printerDot.className = `connection-dot ${info.printer === 'no-printers' ? 'no-printers' : info.printer}`;
+  const printerLabels = {
+    connected: 'Bereikbaar',
+    disconnected: 'Niet bereikbaar',
+    checking: 'Controleren...',
+    'no-printers': 'Niet geconfigureerd',
+  };
+  printerStatus.textContent = printerLabels[info.printer] || info.printer;
+  if (info.printer === 'disconnected' && info.printerError) {
+    printerStatus.title = info.printerError;
+  }
+
+  // Location
+  if (info.location) {
+    locationText.innerHTML = `Gekoppeld aan <span class="location-name">${escapeHtml(info.location)}</span>`;
+  } else if (info.server === 'connected') {
+    locationText.textContent = 'Verbonden met server';
+  } else {
+    locationText.textContent = 'Niet verbonden';
+  }
+
+  // Printer list
+  if (info.printers && info.printers.length > 0) {
+    printerCard.classList.remove('hidden');
+    printerListCompact.innerHTML = info.printers.map(p => {
+      const dotClass = p._reachable === true ? 'ok' : p._reachable === false ? 'fail' : 'unknown';
+      return `
+        <div class="printer-row">
+          <div class="printer-row-dot ${dotClass}"></div>
+          <span class="printer-row-name">${escapeHtml(p.name)}</span>
+          <span class="printer-row-ip">${escapeHtml(p.ip_address)}:${p.port || 9100}</span>
+        </div>
+      `;
+    }).join('');
+  } else {
+    printerCard.classList.add('hidden');
   }
 }
 
@@ -95,9 +177,13 @@ window.api.onStatusUpdate((state) => {
   updateUI(state);
 });
 
+window.api.onConnectionInfo((info) => {
+  updateConnectionUI(info);
+});
+
 window.api.onPrintSuccess(({ orderNumber, printerName }) => {
-  // Flash the status card green
-  const card = $('#status-card');
+  // Flash the connection card green
+  const card = $('#connection-card');
   card.classList.remove('flash-success');
   void card.offsetWidth; // Force reflow
   card.classList.add('flash-success');
@@ -130,6 +216,63 @@ window.api.onLog(({ level, message, time }) => {
   while (logList.children.length > 200) {
     logList.removeChild(logList.lastChild);
   }
+});
+
+// ============ WELCOME CONNECT ============
+$('#btn-welcome-connect').addEventListener('click', async () => {
+  const token = $('#welcome-token').value.trim();
+  const errorEl = $('#welcome-error');
+
+  if (!token) {
+    errorEl.textContent = 'Voer een agent token in';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  const btn = $('#btn-welcome-connect');
+  btn.disabled = true;
+  btn.textContent = '⏳ Verbinden...';
+  errorEl.classList.add('hidden');
+
+  try {
+    await window.api.saveConfig({ agentToken: token });
+
+    // Wait a moment for agent to start and do heartbeat
+    await new Promise(r => setTimeout(r, 2000));
+    const state = await window.api.getState();
+
+    if (state.status === 'error') {
+      errorEl.textContent = 'Kon niet verbinden. Controleer het token en probeer opnieuw.';
+      errorEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = '🔗 Verbinden';
+      return;
+    }
+
+    // Success — switch to main app
+    showMainApp();
+    const config = await window.api.getConfig();
+    $('#input-api-url').value = config.apiBaseUrl || '';
+    $('#input-token').placeholder = config.agentToken || '';
+    $('#input-poll').value = config.pollIntervalMs || 5000;
+    updateUI(state);
+  } catch (e) {
+    errorEl.textContent = 'Er ging iets mis. Probeer opnieuw.';
+    errorEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = '🔗 Verbinden';
+  }
+});
+
+// ============ PRINTER REFRESH ============
+$('#btn-refresh-printers').addEventListener('click', async () => {
+  const btn = $('#btn-refresh-printers');
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  const info = await window.api.checkPrinterNow();
+  if (info) updateConnectionUI(info);
+  btn.disabled = false;
+  btn.textContent = '🔄';
 });
 
 // ============ BUTTON HANDLERS ============

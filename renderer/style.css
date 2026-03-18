@@ -69,70 +69,206 @@ body {
 
 /* ============ STATUS CARD ============ */
 .card {
-  margin: 16px;
-  padding: 20px;
+  margin: 12px 16px;
+  padding: 16px;
   background: var(--bg-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
 
-.status-card {
-  text-align: center;
+/* ============ CONNECTION CARD ============ */
+.connection-card {
+  padding: 14px 16px;
 }
 
-.status-indicator {
+.connection-row {
+  display: flex;
+  gap: 16px;
+}
+
+.connection-item {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
-  margin-bottom: 16px;
-  font-size: 18px;
-  font-weight: 600;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 8px;
 }
 
-.status-dot {
-  width: 14px;
-  height: 14px;
+.connection-dot {
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--text-muted);
+  flex-shrink: 0;
   transition: background 0.3s;
 }
 
-.status-dot.online {
+.connection-dot.connected {
   background: var(--green);
-  box-shadow: 0 0 8px rgba(0, 214, 143, 0.5);
+  box-shadow: 0 0 6px rgba(0, 214, 143, 0.4);
 }
 
-.status-dot.error {
+.connection-dot.disconnected {
   background: var(--red);
-  box-shadow: 0 0 8px rgba(255, 71, 87, 0.5);
+  box-shadow: 0 0 6px rgba(255, 71, 87, 0.4);
 }
 
-.status-dot.offline {
+.connection-dot.checking {
+  background: var(--yellow);
+  animation: pulse-dot 1.5s infinite;
+}
+
+.connection-dot.no-printers {
   background: var(--text-muted);
 }
 
-.status-details {
-  display: flex;
-  justify-content: space-around;
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-.stat {
+.connection-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
+  min-width: 0;
 }
 
-.stat-label {
-  font-size: 12px;
+.connection-label {
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.stat-value {
-  font-size: 20px;
+.connection-value {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connection-location {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.connection-location .location-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ============ PRINTER CARD ============ */
+.printer-card {
+  padding: 12px 16px;
+}
+
+.printer-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.printer-card-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn-tiny {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-app-region: no-drag;
+}
+
+.btn-tiny:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.printer-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.printer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.printer-row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.printer-row-dot.ok { background: var(--green); }
+.printer-row-dot.fail { background: var(--red); }
+.printer-row-dot.unknown { background: var(--text-muted); }
+
+.printer-row-name {
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.printer-row-ip {
+  color: var(--text-muted);
+  font-family: 'Cascadia Code', monospace;
+  font-size: 11px;
+}
+
+/* ============ STATS ROW ============ */
+.stats-row {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.stat-box .stat-value {
+  font-size: 18px;
   font-weight: 700;
+}
+
+.stat-box .stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* ============ ACTIONS ============ */
@@ -436,4 +572,109 @@ body {
 
 .flash-success {
   animation: flash-green 1s ease-out;
+}
+
+/* ============ WELCOME SCREEN ============ */
+#welcome-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.welcome-container {
+  text-align: center;
+  padding: 30px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.welcome-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.welcome-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.welcome-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+.welcome-steps {
+  text-align: left;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.welcome-step strong {
+  color: var(--text);
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.welcome-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome-form .form-group {
+  margin-bottom: 0;
+  text-align: left;
+}
+
+.btn-large {
+  padding: 14px 20px;
+  font-size: 16px;
+}
+
+.welcome-error {
+  color: var(--red);
+  font-size: 13px;
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 71, 87, 0.1);
+  border-radius: 6px;
+}
+
+/* ============ ACTIONS — EXTRAS ============ */
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.actions {
+  padding: 0 16px;
+  margin-bottom: 12px;
 }

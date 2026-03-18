@@ -8,63 +8,127 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="header-logo">🖨️ Bol'Es Printer <span class="dev-badge hidden" id="dev-badge">DEV</span></div>
-    <div class="header-version" id="version">v1.0.0</div>
-  </header>
+  <!-- ============ WELCOME SCREEN (first run, no token) ============ -->
+  <div id="welcome-screen" class="hidden">
+    <div class="welcome-container">
+      <div class="welcome-icon">🖨️</div>
+      <h1 class="welcome-title">Eethuis Bol'Es Printer</h1>
+      <p class="welcome-subtitle">Koppel deze printer aan het bestelsysteem</p>
 
-  <!-- Status Card -->
-  <div class="card status-card" id="status-card">
-    <div class="status-indicator" id="status-indicator">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">Verbinden...</span>
+      <div class="welcome-steps">
+        <div class="welcome-step">
+          <span class="step-number">1</span>
+          <span>Open het <strong>admin portaal</strong> en ga naar Instellingen → Printers</span>
+        </div>
+        <div class="welcome-step">
+          <span class="step-number">2</span>
+          <span>Kopieer het <strong>Agent Token</strong></span>
+        </div>
+        <div class="welcome-step">
+          <span class="step-number">3</span>
+          <span>Plak het hieronder en klik <strong>Verbinden</strong></span>
+        </div>
+      </div>
+
+      <div class="welcome-form">
+        <div class="form-group">
+          <label for="welcome-token">Agent Token</label>
+          <input type="password" id="welcome-token" placeholder="Plak je agent token hier..." autocomplete="off">
+        </div>
+        <button class="btn btn-primary btn-large" id="btn-welcome-connect">
+          🔗 Verbinden
+        </button>
+        <p class="welcome-error hidden" id="welcome-error"></p>
+      </div>
     </div>
-    <div class="status-details">
-      <div class="stat">
-        <span class="stat-label">Vandaag geprint</span>
+  </div>
+
+  <!-- ============ MAIN APP (shown when token is configured) ============ -->
+  <div id="main-app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-logo">🖨️ Bol'Es Printer <span class="dev-badge hidden" id="dev-badge">DEV</span></div>
+      <div class="header-version" id="version">v1.0.0</div>
+    </header>
+
+    <!-- Connection Status Card -->
+    <div class="card connection-card" id="connection-card">
+      <div class="connection-row">
+        <div class="connection-item">
+          <div class="connection-dot checking" id="server-dot"></div>
+          <div class="connection-info">
+            <span class="connection-label">Server</span>
+            <span class="connection-value" id="server-status">Controleren...</span>
+          </div>
+        </div>
+        <div class="connection-item">
+          <div class="connection-dot checking" id="printer-dot"></div>
+          <div class="connection-info">
+            <span class="connection-label">Printer</span>
+            <span class="connection-value" id="printer-status">Controleren...</span>
+          </div>
+        </div>
+      </div>
+      <div class="connection-location" id="location-info">
+        <span id="location-text">Verbinden...</span>
+      </div>
+    </div>
+
+    <!-- Printer Info (shown when printers are found) -->
+    <div class="card printer-card hidden" id="printer-card">
+      <div class="printer-card-header">
+        <span class="printer-card-title">🖨️ Printers</span>
+        <button class="btn btn-tiny" id="btn-refresh-printers" title="Ververs printer status">🔄</button>
+      </div>
+      <div class="printer-list-compact" id="printer-list-compact"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-box">
         <span class="stat-value" id="printed-today">0</span>
+        <span class="stat-label">Vandaag</span>
       </div>
-      <div class="stat">
-        <span class="stat-label">Laatste print</span>
+      <div class="stat-box">
         <span class="stat-value" id="last-print">—</span>
+        <span class="stat-label">Laatste print</span>
       </div>
     </div>
-  </div>
 
-  <!-- Actions -->
-  <div class="actions">
-    <button class="btn btn-primary" id="btn-test-print" title="Stuur een testpagina naar de printer">
-      🖨️ Test Print
-    </button>
-    <button class="btn btn-secondary" id="btn-settings" title="Instellingen openen">
-      ⚙️ Instellingen
-    </button>
-  </div>
-
-  <!-- Update Banner -->
-  <div class="update-banner hidden" id="update-banner">
-    <span id="update-text">Update beschikbaar!</span>
-    <button class="btn btn-small" id="btn-install-update">Installeren</button>
-  </div>
-
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" data-tab="prints">Recente Prints</button>
-    <button class="tab" data-tab="logs">Logs</button>
-  </div>
-
-  <!-- Recent Prints -->
-  <div class="tab-content active" id="tab-prints">
-    <div class="print-list" id="print-list">
-      <div class="empty-state">Nog geen prints vandaag</div>
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-test-print" title="Stuur een testpagina naar de printer">
+        🖨️ Test Print
+      </button>
+      <button class="btn btn-secondary" id="btn-settings" title="Instellingen openen">
+        ⚙️ Instellingen
+      </button>
     </div>
-  </div>
 
-  <!-- Logs -->
-  <div class="tab-content" id="tab-logs">
-    <div class="log-list" id="log-list">
-      <div class="empty-state">Geen logs</div>
+    <!-- Update Banner -->
+    <div class="update-banner hidden" id="update-banner">
+      <span id="update-text">Update beschikbaar!</span>
+      <button class="btn btn-small" id="btn-install-update">Installeren</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="prints">Recente Prints</button>
+      <button class="tab" data-tab="logs">Logs</button>
+    </div>
+
+    <!-- Recent Prints -->
+    <div class="tab-content active" id="tab-prints">
+      <div class="print-list" id="print-list">
+        <div class="empty-state">Nog geen prints vandaag</div>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="tab-content" id="tab-logs">
+      <div class="log-list" id="log-list">
+        <div class="empty-state">Geen logs</div>
+      </div>
     </div>
   </div>
 

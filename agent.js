@@ -16,7 +16,7 @@ const AGENT_VERSION = '1.0.0';
 class PrintAgent {
   constructor(config, callbacks = {}) {
     this.config = config;
-    this.callbacks = callbacks; // { onStatusChange, onPrintSuccess, onPrintError, onLog }
+    this.callbacks = callbacks; // { onStatusChange, onPrintSuccess, onPrintError, onLog, onConnectionInfo }
 
     this.apiBase = (config.apiBaseUrl || '').replace(/\/$/, '');
     this.authHeader = `Bearer ${config.agentToken || ''}`;
@@ -27,6 +27,18 @@ class PrintAgent {
     this.running = false;
     this.startTime = null;
 
+    // Connection state
+    this.connectionInfo = {
+      server: 'checking',    // 'connected', 'disconnected', 'checking'
+      printer: 'checking',   // 'connected', 'disconnected', 'checking', 'no-printers'
+      location: null,        // location name from heartbeat
+      printers: [],          // printer list from server
+      lastServerCheck: null,
+      lastPrinterCheck: null,
+      serverError: null,
+      printerError: null,
+    };
+
     // Log buffer for server
     this.logBuffer = [];
     this.maxLogBuffer = 50;
@@ -35,6 +47,7 @@ class PrintAgent {
     this._pollTimer = null;
     this._heartbeatTimer = null;
     this._logFlushTimer = null;
+    this._printerCheckTimer = null;
   }
 
   // ============ LIFECYCLE ============
@@ -57,6 +70,10 @@ class PrintAgent {
     this._pollTimer = setInterval(() => this.claimAndPrint(), this.pollInterval);
     this._heartbeatTimer = setInterval(() => this.heartbeat(), this.heartbeatInterval);
     this._logFlushTimer = setInterval(() => this.flushLogs(), 60000);
+    this._printerCheckTimer = setInterval(() => this.checkPrinters(), 60000);
+
+    // Initial printer check (after short delay to let heartbeat finish first)
+    setTimeout(() => this.checkPrinters(), 3000);
 
     this.log('INFO', 'Agent is running. Waiting for print jobs...');
   }
@@ -66,9 +83,11 @@ class PrintAgent {
     clearInterval(this._pollTimer);
     clearInterval(this._heartbeatTimer);
     clearInterval(this._logFlushTimer);
+    clearInterval(this._printerCheckTimer);
     this._pollTimer = null;
     this._heartbeatTimer = null;
     this._logFlushTimer = null;
+    this._printerCheckTimer = null;
 
     this.log('INFO', 'Agent stopped.');
     this._emitStatus('offline');
@@ -233,6 +252,16 @@ class PrintAgent {
 
       // Heartbeat success means we're online
       this._emitStatus('online');
+      this.connectionInfo.server = 'connected';
+      this.connectionInfo.lastServerCheck = new Date().toISOString();
+      this.connectionInfo.serverError = null;
+
+      // Capture location name if returned
+      if (result.locationName) {
+        this.connectionInfo.location = result.locationName;
+      }
+
+      this._emitConnectionInfo();
 
       // Process commands
       if (result.commands && result.commands.length > 0) {
@@ -247,6 +276,10 @@ class PrintAgent {
     } catch (error) {
       this.log('WARN', `Heartbeat failed: ${error.message}`);
       this._emitStatus('error');
+      this.connectionInfo.server = 'disconnected';
+      this.connectionInfo.serverError = error.message;
+      this.connectionInfo.lastServerCheck = new Date().toISOString();
+      this._emitConnectionInfo();
     }
   }
 
@@ -611,7 +644,73 @@ class PrintAgent {
     }
   }
 
+  // ============ PRINTER CONNECTIVITY CHECK ============
+
+  async checkPrinters() {
+    try {
+      const result = await this.apiRequest('GET', '/api/agent/printers');
+      const printers = (result.data || []).filter(p => p.ip_address);
+      this.connectionInfo.printers = printers;
+
+      if (printers.length === 0) {
+        this.connectionInfo.printer = 'no-printers';
+        this.connectionInfo.printerError = 'Geen printers geconfigureerd op server';
+        this._emitConnectionInfo();
+        return;
+      }
+
+      // Check if at least one printer is reachable
+      let anyReachable = false;
+      for (const printer of printers) {
+        const ok = await this.checkPrinterConnection(printer.ip_address, printer.port || 9100);
+        printer._reachable = ok;
+        if (ok) anyReachable = true;
+      }
+
+      this.connectionInfo.printer = anyReachable ? 'connected' : 'disconnected';
+      this.connectionInfo.printerError = anyReachable ? null : 'Printer(s) niet bereikbaar op het netwerk';
+      this.connectionInfo.lastPrinterCheck = new Date().toISOString();
+      this._emitConnectionInfo();
+    } catch (error) {
+      this.log('WARN', `Printer check failed: ${error.message}`);
+      this.connectionInfo.printerError = error.message;
+      this._emitConnectionInfo();
+    }
+  }
+
+  checkPrinterConnection(ip, port) {
+    return new Promise((resolve) => {
+      const client = new net.Socket();
+      const timeout = setTimeout(() => {
+        client.destroy();
+        resolve(false);
+      }, 3000);
+
+      client.connect(port, ip, () => {
+        clearTimeout(timeout);
+        client.destroy();
+        resolve(true);
+      });
+
+      client.on('error', () => {
+        clearTimeout(timeout);
+        client.destroy();
+        resolve(false);
+      });
+    });
+  }
+
+  getConnectionInfo() {
+    return { ...this.connectionInfo };
+  }
+
   // ============ HELPERS ============
+
+  _emitConnectionInfo() {
+    if (this.callbacks.onConnectionInfo) {
+      this.callbacks.onConnectionInfo({ ...this.connectionInfo });
+    }
+  }
 
   _emitStatus(status) {
     if (this.callbacks.onStatusChange) {

@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('api', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (config) => ipcRenderer.invoke('save-config', config),
   getLogs: () => ipcRenderer.invoke('get-logs'),
+  getConnectionInfo: () => ipcRenderer.invoke('get-connection-info'),
+  checkPrinterNow: () => ipcRenderer.invoke('check-printer-now'),
 
   // Actions
   testPrint: () => ipcRenderer.invoke('test-print'),
@@ -19,6 +21,9 @@ contextBridge.exposeInMainWorld('api', {
   // Events from main process
   onStatusUpdate: (callback) => {
     ipcRenderer.on('status-update', (_, data) => callback(data));
+  },
+  onConnectionInfo: (callback) => {
+    ipcRenderer.on('connection-info', (_, data) => callback(data));
   },
   onPrintSuccess: (callback) => {
     ipcRenderer.on('print-success', (_, data) => callback(data));

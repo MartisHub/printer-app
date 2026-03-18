@@ -9,6 +9,9 @@ const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
+// Disable GPU hardware acceleration to prevent cache errors on Windows
+app.disableHardwareAcceleration();
+
 // Single instance lock — prevent multiple copies
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -70,6 +73,14 @@ const stats = {
   printerStatus: 'unknown',
   agentUptime: 0,
   updateAvailable: null,
+  connectionInfo: {
+    server: 'checking',
+    printer: 'checking',
+    location: null,
+    printers: [],
+    serverError: null,
+    printerError: null,
+  },
 };
 
 // ============ TRAY ============
@@ -161,6 +172,13 @@ function createWindow() {
     mainWindow.show();
   });
 
+  // Safety: show window after 3s even if ready-to-show never fires
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  }, 3000);
+
   if (IS_DEV) {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
@@ -217,6 +235,11 @@ function startAgent() {
     onLog: (level, message) => {
       sendToRenderer('log', { level, message, time: new Date().toISOString() });
     },
+    onConnectionInfo: (info) => {
+      stats.connectionInfo = info;
+      sendToRenderer('connection-info', info);
+      sendToRenderer('status-update', getState());
+    },
   });
 
   agent.start();
@@ -243,6 +266,7 @@ function testPrint() {
 function getState() {
   return {
     ...stats,
+    connectionInfo: stats.connectionInfo,
     config: {
       apiBaseUrl: config.apiBaseUrl,
       pollIntervalMs: config.pollIntervalMs,
@@ -286,6 +310,19 @@ ipcMain.handle('save-config', (event, newConfig) => {
 ipcMain.handle('test-print', () => {
   testPrint();
   return { success: true };
+});
+
+ipcMain.handle('get-connection-info', () => {
+  if (agent) return agent.getConnectionInfo();
+  return stats.connectionInfo;
+});
+
+ipcMain.handle('check-printer-now', async () => {
+  if (agent) {
+    await agent.checkPrinters();
+    return agent.getConnectionInfo();
+  }
+  return stats.connectionInfo;
 });
 
 ipcMain.handle('check-update', async () => {
