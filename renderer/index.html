@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Eethuis Bol'Es Printer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">🖨️ Bol'Es Printer <span class="dev-badge hidden" id="dev-badge">DEV</span></div>
+    <div class="header-version" id="version">v1.0.0</div>
+  </header>
+
+  <!-- Status Card -->
+  <div class="card status-card" id="status-card">
+    <div class="status-indicator" id="status-indicator">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Verbinden...</span>
+    </div>
+    <div class="status-details">
+      <div class="stat">
+        <span class="stat-label">Vandaag geprint</span>
+        <span class="stat-value" id="printed-today">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Laatste print</span>
+        <span class="stat-value" id="last-print">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-primary" id="btn-test-print" title="Stuur een testpagina naar de printer">
+      🖨️ Test Print
+    </button>
+    <button class="btn btn-secondary" id="btn-settings" title="Instellingen openen">
+      ⚙️ Instellingen
+    </button>
+  </div>
+
+  <!-- Update Banner -->
+  <div class="update-banner hidden" id="update-banner">
+    <span id="update-text">Update beschikbaar!</span>
+    <button class="btn btn-small" id="btn-install-update">Installeren</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="prints">Recente Prints</button>
+    <button class="tab" data-tab="logs">Logs</button>
+  </div>
+
+  <!-- Recent Prints -->
+  <div class="tab-content active" id="tab-prints">
+    <div class="print-list" id="print-list">
+      <div class="empty-state">Nog geen prints vandaag</div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="tab-content" id="tab-logs">
+    <div class="log-list" id="log-list">
+      <div class="empty-state">Geen logs</div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal hidden" id="settings-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ Instellingen</h2>
+        <button class="modal-close" id="btn-close-settings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="input-api-url">Server URL</label>
+          <input type="text" id="input-api-url" placeholder="https://portaal.eethuisboles.nl">
+          <small id="url-hint">Production: portaal.eethuisboles.nl — Dev: localhost:3001</small>
+        </div>
+        <div class="form-group">
+          <label for="input-token">Agent Token</label>
+          <input type="password" id="input-token" placeholder="Plak je agent token hier">
+          <small>Dit token koppelt de printer aan je locatie</small>
+        </div>
+        <div class="form-group">
+          <label for="input-poll">Poll interval (ms)</label>
+          <input type="number" id="input-poll" min="1000" max="30000" step="1000" value="5000">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-cancel-settings">Annuleren</button>
+        <button class="btn btn-primary" id="btn-save-settings">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

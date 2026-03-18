@@ -1,0 +1,62 @@
+{
+  "name": "eethuis-boles-printer",
+  "version": "1.0.0",
+  "description": "Eethuis Bol'Es Printer Agent - Automatisch bonnetjes printen",
+  "main": "main.js",
+  "author": "Eethuis Bol'Es",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win",
+    "build:dir": "electron-builder --win --dir",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "nl.eethuisboles.printer",
+    "productName": "Eethuis Bol'Es Printer",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "shortcutName": "Bol'Es Printer"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "JOUW-GITHUB-USERNAME",
+        "repo": "boles-printer-releases",
+        "private": true
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "agent.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ]
+  }
+}
