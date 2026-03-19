@@ -122,10 +122,15 @@ function updateTrayMenu() {
     { type: 'separator' },
     {
       label: stats.updateAvailable
-        ? `Update beschikbaar: v${stats.updateAvailable}`
-        : 'Geen updates',
-      enabled: !!stats.updateAvailable,
-      click: () => autoUpdater.quitAndInstall(),
+        ? `Update installeren: v${stats.updateAvailable}`
+        : 'Controleer op updates',
+      click: () => {
+        if (stats.updateAvailable) {
+          autoUpdater.quitAndInstall();
+        } else if (!IS_DEV) {
+          autoUpdater.checkForUpdates().catch(() => {});
+        }
+      },
     },
     { type: 'separator' },
     {
