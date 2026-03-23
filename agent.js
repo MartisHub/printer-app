@@ -354,18 +354,28 @@ class PrintAgent {
       const testOrder = {
         order_number: 'TEST-' + Date.now().toString().slice(-4),
         created_at: new Date().toISOString(),
-        delivery_type: 'PICKUP',
-        customer_name: 'TEST PRINT',
-        customer_phone: '',
-        subtotal: 12.50,
-        delivery_fee: 0,
-        service_fee: 0,
-        total: 12.50,
+        restaurant_name: 'EETHUIS BOLES',
+        delivery_type: 'DELIVERY',
+        customer_name: 'Jan de Vries',
+        customer_phone: '06-12345678',
+        address_street: 'Kerkstraat 12',
+        address_postcode: '1234 AB',
+        address_city: 'Amsterdam',
+        subtotal: 32.50,
+        delivery_fee: 2.50,
+        service_fee: 0.50,
+        total: 35.50,
+        payment_method: 'online',
+        payment_status: 'paid',
+        is_paid: true,
         order_items: [
-          { name: 'Test Item 1', quantity: 2, price: 5.00 },
-          { name: 'Test Item 2', quantity: 1, price: 2.50 },
+          { name: 'Kapsalon', quantity: 2, price: 12.00 },
+          { name: 'Friet groot', quantity: 1, price: 4.50, notes: 'Extra mayo' },
+          { name: 'Doner kebab', quantity: 1, price: 9.00 },
+          { name: 'Cola 330ml', quantity: 2, price: 2.50 },
+          { name: 'Knoflooksaus', quantity: 2, price: 1.00 },
         ],
-        notes: 'Dit is een testprint vanuit de Printer App.',
+        notes: 'Graag aanbellen, bel doet het niet. Even bellen als je er bent.',
       };
 
       // Get printers for this location from the server
@@ -461,38 +471,54 @@ class PrintAgent {
     const LEFT = ESC + 'a' + '\x00';
     const BOLD_ON = ESC + 'E' + '\x01';
     const BOLD_OFF = ESC + 'E' + '\x00';
-    const DOUBLE_SIZE = GS + '!' + '\x11';
+    const DOUBLE_HEIGHT = GS + '!' + '\x01';  // double height only
+    const DOUBLE_SIZE = GS + '!' + '\x11';    // double width + double height
+    const WIDE = GS + '!' + '\x10';           // double width only
     const NORMAL_SIZE = GS + '!' + '\x00';
     const CUT = GS + 'V' + '\x00';
-    const FEED3 = LF + LF + LF + LF + LF + LF;
+    const FEED_TOP = LF + LF + LF + LF + LF + LF + LF + LF;
+    const FEED_BOTTOM = LF + LF + LF + LF + LF + LF + LF + LF + LF + LF;
 
+    // Double height = half chars per line for width calc
     const charWidth = paperWidth === 58 ? 32 : 48;
+    const halfCharWidth = Math.floor(charWidth / 2);
     const LINE = '-'.repeat(charWidth);
 
     let ticket = '';
     ticket += INIT;
 
+    // Top margin
+    ticket += FEED_TOP;
+
     // Header
     ticket += CENTER;
     ticket += DOUBLE_SIZE;
     ticket += BOLD_ON;
-    ticket += order.restaurant_name || 'RESTAURANT' + LF;
+    ticket += (order.restaurant_name || 'RESTAURANT') + LF;
     ticket += NORMAL_SIZE;
     ticket += BOLD_OFF;
+    ticket += LF;
     ticket += LINE + LF;
+    ticket += LF;
 
     // Order info
+    ticket += DOUBLE_HEIGHT;
     ticket += BOLD_ON;
     ticket += `BESTELLING #${order.order_number}` + LF;
+    ticket += NORMAL_SIZE;
     ticket += BOLD_OFF;
 
     const date = new Date(order.created_at);
+    ticket += DOUBLE_HEIGHT;
     ticket += date.toLocaleString('nl-NL', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     }) + LF;
+    ticket += NORMAL_SIZE;
 
+    ticket += LF;
     ticket += LINE + LF;
+    ticket += LF;
 
     // Delivery type
     ticket += BOLD_ON;
@@ -504,9 +530,11 @@ class PrintAgent {
     }
     ticket += NORMAL_SIZE;
     ticket += BOLD_OFF;
+    ticket += LF;
 
     // Customer info
     ticket += LEFT;
+    ticket += DOUBLE_HEIGHT;
     ticket += `Klant: ${order.customer_name}` + LF;
     if (order.customer_phone) {
       ticket += `Tel: ${order.customer_phone}` + LF;
@@ -516,13 +544,18 @@ class PrintAgent {
       ticket += `Adres: ${order.address_street || ''}` + LF;
       ticket += `       ${order.address_postcode || ''} ${order.address_city || ''}` + LF;
     }
+    ticket += NORMAL_SIZE;
 
+    ticket += LF;
     ticket += LINE + LF;
+    ticket += LF;
 
     // Items
     ticket += BOLD_ON;
+    ticket += DOUBLE_HEIGHT;
     ticket += 'ITEMS:' + LF;
     ticket += BOLD_OFF;
+    ticket += LF;
 
     const items = order.order_items || [];
     for (const item of items) {
@@ -534,21 +567,28 @@ class PrintAgent {
       const priceStr = `EUR ${price}`;
       const pad = charWidth - itemLine.length - priceStr.length;
 
+      ticket += DOUBLE_HEIGHT;
       if (pad > 0) {
         ticket += itemLine + ' '.repeat(pad) + priceStr + LF;
       } else {
         ticket += itemLine + LF;
         ticket += ' '.repeat(charWidth - priceStr.length) + priceStr + LF;
       }
+      ticket += NORMAL_SIZE;
 
       if (item.notes) {
+        ticket += DOUBLE_HEIGHT;
         ticket += `  > ${item.notes}` + LF;
+        ticket += NORMAL_SIZE;
       }
     }
 
+    ticket += LF;
     ticket += LINE + LF;
+    ticket += LF;
 
     // Totals
+    ticket += DOUBLE_HEIGHT;
     const subtotalStr = `EUR ${parseFloat(order.subtotal || 0).toFixed(2)}`;
     ticket += this._padLine('Subtotaal:', subtotalStr, charWidth) + LF;
 
@@ -560,26 +600,57 @@ class PrintAgent {
       const svcStr = `EUR ${parseFloat(order.service_fee).toFixed(2)}`;
       ticket += this._padLine('Servicekosten:', svcStr, charWidth) + LF;
     }
+    ticket += NORMAL_SIZE;
 
+    ticket += LF;
     ticket += BOLD_ON;
+    ticket += DOUBLE_SIZE;
     const totalStr = `EUR ${parseFloat(order.total || 0).toFixed(2)}`;
-    ticket += this._padLine('TOTAAL:', totalStr, charWidth) + LF;
+    ticket += this._padLine('TOTAAL:', totalStr, halfCharWidth) + LF;
+    ticket += NORMAL_SIZE;
+    ticket += BOLD_OFF;
+
+    // Payment status
+    ticket += LF;
+    ticket += LINE + LF;
+    ticket += LF;
+    ticket += BOLD_ON;
+    ticket += DOUBLE_SIZE;
+    ticket += CENTER;
+    if (order.payment_method === 'cash' || order.payment_method === 'CASH') {
+      ticket += '** CONTANT **' + LF;
+    } else if (order.payment_status === 'paid' || order.payment_status === 'PAID' || order.is_paid) {
+      ticket += '** BETAALD **' + LF;
+    } else {
+      ticket += '** NIET BETAALD **' + LF;
+    }
+    ticket += NORMAL_SIZE;
+    ticket += LEFT;
     ticket += BOLD_OFF;
 
     // Notes
     if (order.notes) {
+      ticket += LF;
       ticket += LINE + LF;
+      ticket += LF;
       ticket += BOLD_ON;
+      ticket += DOUBLE_HEIGHT;
       ticket += 'OPMERKING:' + LF;
       ticket += BOLD_OFF;
       ticket += order.notes + LF;
+      ticket += NORMAL_SIZE;
     }
 
+    ticket += LF;
     ticket += LINE + LF;
+    ticket += LF;
     ticket += CENTER;
+    ticket += DOUBLE_HEIGHT;
     ticket += 'Bedankt voor uw bestelling!' + LF;
+    ticket += NORMAL_SIZE;
 
-    ticket += FEED3;
+    // Bottom margin
+    ticket += FEED_BOTTOM;
     ticket += CUT;
 
     return ticket;
@@ -625,6 +696,14 @@ class PrintAgent {
     if (orderData.service_fee > 0)
       lines.push(this._padLine('Servicekosten:', `EUR ${parseFloat(orderData.service_fee).toFixed(2)}`, W));
     lines.push(this._padLine('TOTAAL:', `EUR ${parseFloat(orderData.total || 0).toFixed(2)}`, W));
+    lines.push(DASH);
+    if (orderData.payment_method === 'cash' || orderData.payment_method === 'CASH') {
+      lines.push(this._center('** CONTANT **', W));
+    } else if (orderData.payment_status === 'paid' || orderData.payment_status === 'PAID' || orderData.is_paid) {
+      lines.push(this._center('** BETAALD **', W));
+    } else {
+      lines.push(this._center('** NOG NIET BETAALD **', W));
+    }
     if (orderData.notes) {
       lines.push(DASH);
       lines.push('OPMERKING: ' + orderData.notes);
