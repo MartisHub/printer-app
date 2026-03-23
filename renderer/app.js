@@ -42,6 +42,8 @@ async function init() {
   const config = await window.api.getConfig();
   $('#input-api-url').value = config.apiBaseUrl || '';
   $('#input-token').placeholder = config.agentToken || 'Plak je agent token hier';
+  $('#input-printer-ip').value = config.printerIp || '';
+  $('#input-printer-port').value = config.printerPort || 9100;
   $('#input-poll').value = config.pollIntervalMs || 5000;
 
   // Get initial connection info
@@ -254,6 +256,8 @@ $('#btn-welcome-connect').addEventListener('click', async () => {
     const config = await window.api.getConfig();
     $('#input-api-url').value = config.apiBaseUrl || '';
     $('#input-token').placeholder = config.agentToken || '';
+    $('#input-printer-ip').value = config.printerIp || '';
+    $('#input-printer-port').value = config.printerPort || 9100;
     $('#input-poll').value = config.pollIntervalMs || 5000;
     updateUI(state);
   } catch (e) {
@@ -302,9 +306,11 @@ $('#btn-cancel-settings').addEventListener('click', () => {
 $('#btn-save-settings').addEventListener('click', async () => {
   const apiBaseUrl = $('#input-api-url').value.trim();
   const agentToken = $('#input-token').value.trim();
+  const printerIp = $('#input-printer-ip').value.trim();
+  const printerPort = parseInt($('#input-printer-port').value) || 9100;
   const pollIntervalMs = parseInt($('#input-poll').value) || 5000;
 
-  const config = { apiBaseUrl, pollIntervalMs };
+  const config = { apiBaseUrl, printerIp, printerPort, pollIntervalMs };
   if (agentToken) config.agentToken = agentToken;
 
   await window.api.saveConfig(config);

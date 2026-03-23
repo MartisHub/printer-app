@@ -22,6 +22,8 @@ class PrintAgent {
     this.authHeader = `Bearer ${config.agentToken || ''}`;
     this.pollInterval = config.pollIntervalMs || 5000;
     this.heartbeatInterval = config.heartbeatIntervalMs || 30000;
+    this.localPrinterIp = config.printerIp || '';
+    this.localPrinterPort = config.printerPort || 9100;
 
     this.isProcessing = false;
     this.running = false;
@@ -188,6 +190,12 @@ class PrintAgent {
       const job = result.data;
       const order = job.orders;
       const printer = job.printers;
+
+      // Override printer IP with local config if set
+      if (this.localPrinterIp && printer) {
+        printer.ip_address = this.localPrinterIp;
+        printer.port = this.localPrinterPort;
+      }
 
       this.log('INFO', `Claimed job ${job.id} for order #${order?.order_number} -> printer "${printer?.name}"`);
 
@@ -372,6 +380,11 @@ class PrintAgent {
       if (printers.length > 0 && printers[0].ip_address) {
         // Print to the first active real printer
         const printer = printers[0];
+        // Override with local IP if configured
+        if (this.localPrinterIp) {
+          printer.ip_address = this.localPrinterIp;
+          printer.port = this.localPrinterPort;
+        }
         this.log('INFO', `Sending test print to ${printer.name} (${printer.ip_address}:${printer.port || 9100})`);
         await this.printTicket(printer, testOrder);
 
@@ -451,7 +464,7 @@ class PrintAgent {
     const DOUBLE_SIZE = GS + '!' + '\x11';
     const NORMAL_SIZE = GS + '!' + '\x00';
     const CUT = GS + 'V' + '\x00';
-    const FEED3 = LF + LF + LF;
+    const FEED3 = LF + LF + LF + LF + LF + LF;
 
     const charWidth = paperWidth === 58 ? 32 : 48;
     const LINE = '-'.repeat(charWidth);
@@ -650,6 +663,15 @@ class PrintAgent {
     try {
       const result = await this.apiRequest('GET', '/api/agent/printers');
       const printers = (result.data || []).filter(p => p.ip_address);
+
+      // Override IP with local config if set
+      if (this.localPrinterIp) {
+        for (const printer of printers) {
+          printer.ip_address = this.localPrinterIp;
+          printer.port = this.localPrinterPort;
+        }
+      }
+
       this.connectionInfo.printers = printers;
 
       if (printers.length === 0) {

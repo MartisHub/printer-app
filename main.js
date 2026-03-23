@@ -30,6 +30,8 @@ const LOG_PATH = path.join(USER_DATA, IS_DEV ? 'agent.dev.log' : 'agent.log');
 const DEFAULT_CONFIG = {
   apiBaseUrl: IS_DEV ? 'http://localhost:3001' : 'https://portaal.eethuisboles.nl',
   agentToken: IS_DEV ? 'dev-test-token' : '',
+  printerIp: '',
+  printerPort: 9100,
   pollIntervalMs: 5000,
   heartbeatIntervalMs: 30000,
   logLevel: IS_DEV ? 'DEBUG' : 'INFO',
@@ -294,6 +296,8 @@ ipcMain.handle('get-state', () => getState());
 ipcMain.handle('get-config', () => ({
   apiBaseUrl: config.apiBaseUrl,
   agentToken: config.agentToken ? '••••' + config.agentToken.slice(-8) : '',
+  printerIp: config.printerIp || '',
+  printerPort: config.printerPort || 9100,
   pollIntervalMs: config.pollIntervalMs,
 }));
 
@@ -301,6 +305,8 @@ ipcMain.handle('save-config', (event, newConfig) => {
   // Only update allowed fields
   if (newConfig.apiBaseUrl) config.apiBaseUrl = newConfig.apiBaseUrl;
   if (newConfig.agentToken) config.agentToken = newConfig.agentToken;
+  if ('printerIp' in newConfig) config.printerIp = newConfig.printerIp;
+  if ('printerPort' in newConfig) config.printerPort = parseInt(newConfig.printerPort) || 9100;
   if (newConfig.pollIntervalMs) config.pollIntervalMs = newConfig.pollIntervalMs;
   saveConfig(config);
 

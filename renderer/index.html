@@ -151,6 +151,16 @@
           <small>Dit token koppelt de printer aan je locatie</small>
         </div>
         <div class="form-group">
+          <label for="input-printer-ip">Printer IP-adres</label>
+          <input type="text" id="input-printer-ip" placeholder="bijv. 192.168.1.100">
+          <small>Lokaal IP-adres van de printer (laat leeg om server-configuratie te gebruiken)</small>
+        </div>
+        <div class="form-group">
+          <label for="input-printer-port">Printer poort</label>
+          <input type="number" id="input-printer-port" min="1" max="65535" value="9100">
+          <small>Standaard: 9100</small>
+        </div>
+        <div class="form-group">
           <label for="input-poll">Poll interval (ms)</label>
           <input type="number" id="input-poll" min="1000" max="30000" step="1000" value="5000">
         </div>
