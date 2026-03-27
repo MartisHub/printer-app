@@ -180,64 +180,70 @@ class PrintAgent {
     this.isProcessing = true;
 
     try {
-      const result = await this.apiRequest('POST', '/api/agent/claim');
-
-      if (!result.data) {
-        // No pending jobs — normal
-        return;
-      }
-
-      const job = result.data;
-      const order = job.orders;
-      const printer = job.printers;
-
-      // Override printer IP with local config if set
-      if (this.localPrinterIp && printer) {
-        printer.ip_address = this.localPrinterIp;
-        printer.port = this.localPrinterPort;
-      }
-
-      this.log('INFO', `Claimed job ${job.id} for order #${order?.order_number} -> printer "${printer?.name}"`);
-
-      try {
-        await this.printTicket(printer, order);
-
-        // Report success
-        await this.apiRequest('PATCH', `/api/print-jobs/${job.id}`, {
-          status: 'PRINTED',
-        });
-
-        this.log('INFO', `✅ Printed order #${order?.order_number} on "${printer?.name}"`);
-
-        if (this.callbacks.onPrintSuccess) {
-          this.callbacks.onPrintSuccess(order?.order_number, printer?.name);
-        }
-      } catch (printError) {
-        this.log('ERROR', `❌ Print failed for order #${order?.order_number}: ${printError.message}`);
-
-        if (this.callbacks.onPrintError) {
-          this.callbacks.onPrintError(order?.order_number, printError.message);
-        }
-
-        // Report failure
+      // Keep claiming and printing until queue is empty
+      while (this.running) {
+        let result;
         try {
-          await this.apiRequest('PATCH', `/api/print-jobs/${job.id}`, {
-            status: 'FAILED',
-            error: printError.message,
-          });
-        } catch (reportError) {
-          this.log('ERROR', `Failed to report print failure: ${reportError.message}`);
+          result = await this.apiRequest('POST', '/api/agent/claim');
+        } catch (error) {
+          if (!error.message.includes('No pending')) {
+            this.log('WARN', `Claim cycle error: ${error.message}`);
+            if (error.message.includes('ECONNREFUSED') || error.message.includes('timed out')) {
+              this._emitStatus('error');
+            }
+          }
+          break;
         }
-      }
-    } catch (error) {
-      if (!error.message.includes('No pending')) {
-        this.log('WARN', `Claim cycle error: ${error.message}`);
 
-        // If we get repeated errors, go to error state
-        if (this.callbacks.onStatusChange) {
-          // Only signal error for actual connection problems, not empty queues
-          if (error.message.includes('ECONNREFUSED') || error.message.includes('timed out')) {
-            this._emitStatus('error');
+        if (!result.data) {
+          // No more pending jobs
+          break;
+        }
+
+        const job = result.data;
+        const order = job.orders;
+        const printer = job.printers;
+
+        // Override printer IP with local config if set
+        if (this.localPrinterIp && printer) {
+          printer.ip_address = this.localPrinterIp;
+          printer.port = this.localPrinterPort;
+        }
+
+        this.log('INFO', `Claimed job ${job.id} for order #${order?.order_number} -> printer "${printer?.name}"`);
+
+        try {
+          await this.printTicket(printer, order);
+
+          // Report success
+          await this.apiRequest('PATCH', `/api/print-jobs/${job.id}`, {
+            status: 'PRINTED',
+          });
+
+          this.log('INFO', `✅ Printed order #${order?.order_number} on "${printer?.name}"`);
+
+          if (this.callbacks.onPrintSuccess) {
+            this.callbacks.onPrintSuccess(order?.order_number, printer?.name);
+          }
+        } catch (printError) {
+          this.log('ERROR', `❌ Print failed for order #${order?.order_number}: ${printError.message}`);
+
+          // Fallback: print to console so ticket content is visible during dev
+          this.log('INFO', 'Fallback: printing to console...');
+          this.printTicketToConsole(printer || { name: 'unknown' }, order);
+
+          if (this.callbacks.onPrintError) {
+            this.callbacks.onPrintError(order?.order_number, printError.message);
+          }
+
+          // Report failure
+          try {
+            await this.apiRequest('PATCH', `/api/print-jobs/${job.id}`, {
+              status: 'FAILED',
+              error: printError.message,
+            });
+          } catch (reportError) {
+            this.log('ERROR', `Failed to report print failure: ${reportError.message}`);
           }
         }
       }
@@ -368,6 +374,9 @@ class PrintAgent {
         payment_method: 'online',
         payment_status: 'paid',
         is_paid: true,
+        preferred_date: new Date().toISOString().split('T')[0],
+        preferred_time: '18:30',
+        asap_delivery: false,
         order_items: [
           { name: 'Kapsalon', quantity: 2, price: 12.00 },
           { name: 'Friet groot', quantity: 1, price: 4.50, notes: 'Extra mayo' },
@@ -378,7 +387,8 @@ class PrintAgent {
         notes: 'Graag aanbellen, bel doet het niet. Even bellen als je er bent.',
       };
 
-      // Get printers for this location from the server
+      // Try to find a reachable printer
+      let printed = false;
       let printers = [];
       try {
         const result = await this.apiRequest('GET', '/api/agent/printers');
@@ -388,29 +398,32 @@ class PrintAgent {
       }
 
       if (printers.length > 0 && printers[0].ip_address) {
-        // Print to the first active real printer
         const printer = printers[0];
-        // Override with local IP if configured
         if (this.localPrinterIp) {
           printer.ip_address = this.localPrinterIp;
           printer.port = this.localPrinterPort;
         }
-        this.log('INFO', `Sending test print to ${printer.name} (${printer.ip_address}:${printer.port || 9100})`);
-        await this.printTicket(printer, testOrder);
-
-        if (this.callbacks.onPrintSuccess) {
-          this.callbacks.onPrintSuccess(testOrder.order_number, printer.name);
+        // Check if printer is actually reachable before sending
+        const reachable = await this.checkPrinterConnection(printer.ip_address, printer.port || 9100);
+        if (reachable) {
+          this.log('INFO', `Sending test print to ${printer.name} (${printer.ip_address}:${printer.port || 9100})`);
+          await this.printTicket(printer, testOrder);
+          if (this.callbacks.onPrintSuccess) {
+            this.callbacks.onPrintSuccess(testOrder.order_number, printer.name);
+          }
+          this.log('INFO', `✅ Test print sent to ${printer.name}`);
+          printed = true;
         }
-        this.log('INFO', `✅ Test print sent to ${printer.name}`);
-      } else {
-        // Fallback: console test print
-        this.log('WARN', 'No printers found — printing to console instead');
-        this.printTicketToConsole({ name: 'Console Test', ip_address: 'n/a' }, testOrder);
+      }
 
+      // No printer reachable → print to console/terminal
+      if (!printed) {
+        this.log('INFO', 'Geen printer bereikbaar — output naar terminal');
+        this.printTicketToConsole({ name: 'Console', ip_address: 'terminal' }, testOrder);
         if (this.callbacks.onPrintSuccess) {
-          this.callbacks.onPrintSuccess(testOrder.order_number, 'Console (geen printer gevonden)');
+          this.callbacks.onPrintSuccess(testOrder.order_number, 'Console (geen printer)');
         }
-        this.log('INFO', '✅ Test print to console completed');
+        this.log('INFO', '✅ Test print naar terminal completed');
       }
     } catch (error) {
       this.log('ERROR', `Test print failed: ${error.message}`);
@@ -531,6 +544,32 @@ class PrintAgent {
     ticket += NORMAL_SIZE;
     ticket += BOLD_OFF;
     ticket += LF;
+
+    // Preferred time
+    if (order.preferred_time && !order.asap_delivery) {
+      ticket += CENTER;
+      ticket += BOLD_ON;
+      ticket += DOUBLE_HEIGHT;
+      const timeLabel = order.delivery_type === 'DELIVERY' ? 'Bezorgtijd' : 'Afhaaltijd';
+      let timeStr = order.preferred_time;
+      if (order.preferred_date) {
+        const d = new Date(order.preferred_date);
+        const dayStr = d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+        timeStr = `${dayStr} om ${order.preferred_time}`;
+      }
+      ticket += `${timeLabel}: ${timeStr}` + LF;
+      ticket += BOLD_OFF;
+      ticket += NORMAL_SIZE;
+      ticket += LEFT;
+      ticket += LF;
+    } else if (order.asap_delivery) {
+      ticket += CENTER;
+      ticket += DOUBLE_HEIGHT;
+      ticket += 'Zo snel mogelijk' + LF;
+      ticket += NORMAL_SIZE;
+      ticket += LEFT;
+      ticket += LF;
+    }
 
     // Customer info
     ticket += LEFT;
@@ -675,6 +714,18 @@ class PrintAgent {
     lines.push(DASH);
     const type = orderData.delivery_type === 'DELIVERY' ? '>> BEZORGEN <<' : '>> AFHALEN <<';
     lines.push(this._center(type, W));
+    if (orderData.preferred_time && !orderData.asap_delivery) {
+      const timeLabel = orderData.delivery_type === 'DELIVERY' ? 'Bezorgtijd' : 'Afhaaltijd';
+      let timeStr = orderData.preferred_time;
+      if (orderData.preferred_date) {
+        const d = new Date(orderData.preferred_date);
+        const dayStr = d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+        timeStr = `${dayStr} om ${orderData.preferred_time}`;
+      }
+      lines.push(this._center(`${timeLabel}: ${timeStr}`, W));
+    } else if (orderData.asap_delivery) {
+      lines.push(this._center('Zo snel mogelijk', W));
+    }
     lines.push(`Klant: ${orderData.customer_name}`);
     if (orderData.customer_phone) lines.push(`Tel:   ${orderData.customer_phone}`);
     if (orderData.delivery_type === 'DELIVERY') {
