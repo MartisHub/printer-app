@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const net = require('net');
 
-const AGENT_VERSION = '1.0.0';
+const AGENT_VERSION = '1.0.7';
 
 class PrintAgent {
   constructor(config, callbacks = {}) {
@@ -211,6 +211,9 @@ class PrintAgent {
         }
 
         this.log('INFO', `Claimed job ${job.id} for order #${order?.order_number} -> printer "${printer?.name}"`);
+        
+        // Debug: log time-related fields
+        this.log('DEBUG', `Order time info - preferred_time: "${order?.preferred_time}", preferred_date: "${order?.preferred_date}", asap_delivery: ${order?.asap_delivery}`);
 
         try {
           await this.printTicket(printer, order);
@@ -546,13 +549,26 @@ class PrintAgent {
     ticket += LF;
 
     // Preferred time
-    if (order.preferred_time && !order.asap_delivery) {
+    // Check for ASAP delivery (handles TRUE, true, "TRUE", "true", 1)
+    const isAsap = order.asap_delivery === true || 
+                   order.asap_delivery === 'TRUE' || 
+                   order.asap_delivery === 'true' || 
+                   order.asap_delivery === 1;
+    
+    const hasPreferredTime = order.preferred_time && 
+                            order.preferred_time !== '' && 
+                            order.preferred_time !== null;
+    
+    // Debug logging
+    this.log('DEBUG', `Time info - preferred_time: ${order.preferred_time}, preferred_date: ${order.preferred_date}, asap: ${order.asap_delivery} -> isAsap: ${isAsap}, hasTime: ${hasPreferredTime}`);
+    
+    if (hasPreferredTime && !isAsap) {
       ticket += CENTER;
       ticket += BOLD_ON;
       ticket += DOUBLE_HEIGHT;
       const timeLabel = order.delivery_type === 'DELIVERY' ? 'Bezorgtijd' : 'Afhaaltijd';
       let timeStr = order.preferred_time;
-      if (order.preferred_date) {
+      if (order.preferred_date && order.preferred_date !== null) {
         const d = new Date(order.preferred_date);
         const dayStr = d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
         timeStr = `${dayStr} om ${order.preferred_time}`;
@@ -562,11 +578,13 @@ class PrintAgent {
       ticket += NORMAL_SIZE;
       ticket += LEFT;
       ticket += LF;
-    } else if (order.asap_delivery) {
+    } else if (isAsap) {
       ticket += CENTER;
+      ticket += BOLD_ON;
       ticket += DOUBLE_HEIGHT;
-      ticket += 'Zo snel mogelijk' + LF;
+      ticket += 'ZO SNEL MOGELIJK' + LF;
       ticket += NORMAL_SIZE;
+      ticket += BOLD_OFF;
       ticket += LEFT;
       ticket += LF;
     }
@@ -600,10 +618,11 @@ class PrintAgent {
     for (const item of items) {
       const qty = item.quantity || 1;
       const name = item.name || 'Onbekend';
-      const price = parseFloat(item.price || 0).toFixed(2);
+      const unitPrice = parseFloat(item.price || 0);
+      const totalPrice = (qty * unitPrice).toFixed(2);
 
       const itemLine = `${qty}x ${name}`;
-      const priceStr = `EUR ${price}`;
+      const priceStr = `EUR ${totalPrice}`;
       const pad = charWidth - itemLine.length - priceStr.length;
 
       ticket += DOUBLE_HEIGHT;
@@ -714,17 +733,28 @@ class PrintAgent {
     lines.push(DASH);
     const type = orderData.delivery_type === 'DELIVERY' ? '>> BEZORGEN <<' : '>> AFHALEN <<';
     lines.push(this._center(type, W));
-    if (orderData.preferred_time && !orderData.asap_delivery) {
+    
+    // Check for ASAP delivery (handles TRUE, true, "TRUE", "true", 1)
+    const isAsap = orderData.asap_delivery === true || 
+                   orderData.asap_delivery === 'TRUE' || 
+                   orderData.asap_delivery === 'true' || 
+                   orderData.asap_delivery === 1;
+    
+    const hasPreferredTime = orderData.preferred_time && 
+                            orderData.preferred_time !== '' && 
+                            orderData.preferred_time !== null;
+    
+    if (hasPreferredTime && !isAsap) {
       const timeLabel = orderData.delivery_type === 'DELIVERY' ? 'Bezorgtijd' : 'Afhaaltijd';
       let timeStr = orderData.preferred_time;
-      if (orderData.preferred_date) {
+      if (orderData.preferred_date && orderData.preferred_date !== null) {
         const d = new Date(orderData.preferred_date);
         const dayStr = d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
         timeStr = `${dayStr} om ${orderData.preferred_time}`;
       }
       lines.push(this._center(`${timeLabel}: ${timeStr}`, W));
-    } else if (orderData.asap_delivery) {
-      lines.push(this._center('Zo snel mogelijk', W));
+    } else if (isAsap) {
+      lines.push(this._center('ZO SNEL MOGELIJK', W));
     }
     lines.push(`Klant: ${orderData.customer_name}`);
     if (orderData.customer_phone) lines.push(`Tel:   ${orderData.customer_phone}`);
@@ -735,8 +765,11 @@ class PrintAgent {
     lines.push(DASH);
     lines.push('ITEMS:');
     for (const item of items) {
-      const left = `${item.quantity || 1}x ${item.name || 'Onbekend'}`;
-      const right = `EUR ${parseFloat(item.price || 0).toFixed(2)}`;
+      const qty = item.quantity || 1;
+      const unitPrice = parseFloat(item.price || 0);
+      const totalPrice = (qty * unitPrice).toFixed(2);
+      const left = `${qty}x ${item.name || 'Onbekend'}`;
+      const right = `EUR ${totalPrice}`;
       lines.push(this._padLine(left, right, W));
       if (item.notes) lines.push(`  > ${item.notes}`);
     }

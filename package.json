@@ -1,6 +1,6 @@
 {
   "name": "restaurant-printer",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Restaurant Printer Agent - Automatisch bonnetjes printen",
   "main": "main.js",
   "author": "Martis Coding",
